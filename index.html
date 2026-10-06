@@ -143,6 +143,23 @@
     .bounce,.ico.pop,.ico.pop .tick,.ripple,.pct.bump .n,.goal.flash,.stat b.tk,.cat-pct b.tk{animation:none!important}
   }
 
+  /* drag to reorder (edit mode) */
+  .editing .goals:empty{min-height:52px}
+  .grip{display:none;width:22px;height:32px;flex:none;margin:0 -6px 0 -8px;place-items:center;
+    color:var(--faint);cursor:grab;touch-action:none;border-radius:6px}
+  .grip:hover{color:var(--dim);background:rgba(255,255,255,.05)}
+  .grip svg{display:block;fill:currentColor}
+  .editing .grip{display:grid}
+  .goal.slot,.editing .goal.slot:hover{padding:0;min-height:0;cursor:grabbing;background:rgba(34,197,94,.07);
+    outline:1px dashed rgba(34,197,94,.45);outline-offset:-5px;border-radius:10px}
+  .goal.slot::after{display:none}
+  .goal.drag-clone{position:fixed;z-index:1000;margin:0;pointer-events:none;background:var(--head);
+    border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.55);
+    transform:scale(1.02);user-select:none;-webkit-user-select:none;transition:none;cursor:grabbing}
+  .goal.drag-clone::after{display:none}
+  .goal.drag-clone.landing{transition:left .18s ease,top .18s ease,transform .18s ease,box-shadow .18s ease}
+  .dragging-goal,.dragging-goal *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
+
   @media(max-width:880px){
     .layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "side" "board"}
     .side{position:static}
@@ -314,6 +331,7 @@
   /* ---------- render ---------- */
   function goalHtml(g, ce){
     return `<li class="goal${g.pct <= 0 ? ' todo' : ''}" data-gid="${g.id}">
+      <span class="grip" role="img" aria-label="끌어서 순서 이동" title="끌어서 이동"><svg width="10" height="16" viewBox="0 0 10 16"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></span>
       <button class="st" aria-label="진행률 올리기">${statusIcon(g.pct, 18)}</button>
       <div class="g-text"${ce}>${toHtml(g.text)}</div>
       <span class="pct"><span class="n">${g.pct}</span><small>%</small></span>
@@ -451,6 +469,104 @@
     }
   });
 
+
+
+  /* ---------- drag to reorder goals (edit mode) ---------- */
+  let drag = null;
+
+  function commitOrder(){
+    const map = {};
+    data.cats.forEach(c => c.goals.forEach(g => { map[g.id] = g; }));
+    board.querySelectorAll('.cat').forEach(sec => {
+      const cat = data.cats.find(c => c.id === sec.dataset.cid); if(!cat) return;
+      cat.goals = [...sec.querySelectorAll('.goal')].map(li => map[li.dataset.gid]).filter(Boolean);
+    });
+    save(); syncUI();
+  }
+  function placeSlot(){
+    const d = drag; if(!d) return;
+    d.clone.style.left = (d.x - d.offX) + 'px';
+    d.clone.style.top = (d.y - d.offY) + 'px';
+    const el = document.elementFromPoint(d.x, d.y);
+    if(!el || el.closest('.slot')) return;
+    let parent, ref;
+    const row = el.closest('.goal');
+    if(row && board.contains(row)){
+      const r = row.getBoundingClientRect();
+      parent = row.parentNode;
+      ref = d.y < r.top + r.height / 2 ? row : row.nextSibling;
+    } else {
+      const sec = el.closest('.cat');
+      if(!sec || !board.contains(sec)) return;
+      parent = sec.querySelector('.goals');
+      ref = el.closest('.cat-head') ? parent.firstChild : null;
+    }
+    if(ref === d.slot) return;
+    if(d.slot.parentNode === parent && d.slot.nextSibling === ref) return;
+    parent.insertBefore(d.slot, ref);
+  }
+  function dragLoop(){
+    const d = drag; if(!d) return;
+    const edge = 70; let dy = 0;
+    if(d.y < edge) dy = -Math.ceil((edge - d.y) / 4);
+    else if(d.y > innerHeight - edge) dy = Math.ceil((d.y - (innerHeight - edge)) / 4);
+    if(dy){ scrollBy(0, dy); placeSlot(); }
+    d.raf = requestAnimationFrame(dragLoop);
+  }
+  function onDragMove(e){ if(!drag) return; drag.x = e.clientX; drag.y = e.clientY; placeSlot(); }
+  function onDragEnd(){ finishDrag(true); }
+  function onDragCancel(){ finishDrag(false); }
+  function onDragKey(e){ if(e.key === 'Escape') finishDrag(false); }
+  function finishDrag(commit){
+    const d = drag; if(!d) return;
+    drag = null;
+    cancelAnimationFrame(d.raf);
+    removeEventListener('pointermove', onDragMove);
+    removeEventListener('pointerup', onDragEnd);
+    removeEventListener('pointercancel', onDragCancel);
+    removeEventListener('keydown', onDragKey);
+    document.body.classList.remove('dragging-goal');
+    if(commit && d.slot.parentNode) d.slot.parentNode.insertBefore(d.li, d.slot);
+    d.slot.remove();
+    d.li.style.display = '';
+    if(commit) commitOrder();
+    if(reduce){ d.clone.remove(); return; }
+    const r = d.li.getBoundingClientRect();
+    d.li.style.visibility = 'hidden';
+    d.clone.classList.add('landing');
+    d.clone.style.left = r.left + 'px';
+    d.clone.style.top = r.top + 'px';
+    d.clone.style.transform = 'scale(1)';
+    d.clone.style.boxShadow = 'none';
+    setTimeout(() => { d.clone.remove(); d.li.style.visibility = ''; }, 200);
+  }
+  board.addEventListener('pointerdown', e => {
+    const grip = e.target.closest && e.target.closest('.grip');
+    if(!grip || !editMode || drag) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    const li = grip.closest('.goal'); if(!li) return;
+    e.preventDefault();
+    const rect = li.getBoundingClientRect();
+    const clone = li.cloneNode(true);
+    clone.classList.add('drag-clone');
+    clone.querySelectorAll('[contenteditable]').forEach(n => n.removeAttribute('contenteditable'));
+    clone.style.width = rect.width + 'px';
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    document.body.appendChild(clone);
+    const slot = document.createElement('li');
+    slot.className = 'goal slot';
+    slot.style.height = rect.height + 'px';
+    li.parentNode.insertBefore(slot, li.nextSibling);
+    li.style.display = 'none';
+    document.body.classList.add('dragging-goal');
+    drag = { li, clone, slot, offX: e.clientX - rect.left, offY: e.clientY - rect.top, x: e.clientX, y: e.clientY, raf: 0 };
+    addEventListener('pointermove', onDragMove);
+    addEventListener('pointerup', onDragEnd);
+    addEventListener('pointercancel', onDragCancel);
+    addEventListener('keydown', onDragKey);
+    dragLoop();
+  });
 
   /* ---------- init ---------- */
   refresh();
