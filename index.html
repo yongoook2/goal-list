@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 목표</title>
+<style>
+  :root{
+    --bg:#0C0E12;
+    --card:#101318;
+    --head:#171B23;
+    --border:#22262E;
+    --track:#262B33;
+    --text:#F1F2F4;
+    --dim:#9CA3AF;
+    --faint:#5F6672;
+    --green:#22C55E;
+    --gold:#EAB308;
+    --red:#D98273;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);min-height:100vh;
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo',sans-serif;
+    -webkit-font-smoothing:antialiased}
+  button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  :focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:8px}
+
+  .page{max-width:1640px;margin:0 auto;padding:36px 24px 72px}
+  .layout{display:grid;grid-template-columns:272px minmax(0,1fr);
+    grid-template-areas:". head" "side board";column-gap:24px;row-gap:22px;align-items:start}
+
+  /* header */
+  .head{grid-area:head;display:flex;align-items:center;justify-content:flex-end;gap:12px;min-height:40px}
+  .title-wrap{display:flex;align-items:baseline;gap:14px;min-width:0;flex-wrap:wrap}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.02em;padding:2px 8px;margin-left:-8px;border-radius:8px;outline:none}
+  .sub{font-size:13px;color:var(--faint)}
+  .btn-ghost{border:1px solid var(--border);color:var(--dim);font-size:13px;font-weight:500;
+    padding:8px 16px;border-radius:8px;flex:none}
+  .btn-ghost:hover{background:var(--head)}
+  .btn-ghost.active{color:var(--green);border-color:var(--green)}
+
+  /* sidebar */
+  .side{grid-area:side;position:sticky;top:24px}
+  .sum-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px 22px 22px}
+  .ring-wrap{position:relative;width:190px;height:190px;margin:0 auto}
+  .ring-wrap svg{transform:rotate(-90deg);display:block}
+  .ring-track{stroke:var(--track)}
+  .ring-fill{stroke:var(--green);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+  .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .ring-label{font-size:13px;color:var(--dim);margin-bottom:2px}
+  .ring-value{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
+  .ring-value .u{font-size:22px;font-weight:700;margin-left:1px}
+  .stats{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+  .stat{display:flex;align-items:center;justify-content:space-between;font-size:14px;color:var(--dim)}
+  .stat b{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+  .stat b.g{color:var(--green)} .stat b.y{color:var(--gold)} .stat b.r{color:var(--red)}
+  .legend{list-style:none;margin-top:22px;padding:0 6px;display:flex;flex-direction:column;gap:14px}
+  .legend li{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim)}
+  .legend li svg{flex:none}
+  .legend li span{margin-left:auto;font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+  /* board */
+  .board{grid-area:board;display:grid;grid-template-columns:repeat(auto-fill,minmax(264px,1fr));gap:16px;align-items:stretch}
+  .cat{background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+  .cat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:18px 18px 16px;background:var(--head);border-bottom:1px solid var(--border)}
+  .cat-title{display:flex;align-items:center;gap:4px;min-width:0}
+  .cat-name{font-size:20px;font-weight:800;letter-spacing:-.02em;padding:2px 6px;margin-left:-6px;border-radius:6px;outline:none;overflow-wrap:anywhere}
+  .count{font-size:14px;font-weight:500;color:var(--faint);flex:none;font-variant-numeric:tabular-nums}
+  .cat-right{display:flex;align-items:center;gap:8px;flex:none}
+  .cat-pct{color:var(--dim);font-variant-numeric:tabular-nums}
+  .cat-pct b{font-size:16px;font-weight:500}
+  .cat-pct small{font-size:12px;margin-left:1px}
+
+  .goals{list-style:none;flex:1;padding:0;min-height:12px}
+  .goal{position:relative;display:flex;align-items:center;gap:12px;padding:12px 18px;min-height:58px;cursor:pointer;
+    transition:background .12s;user-select:none;-webkit-user-select:none}
+  .goal:not(:last-child)::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--border)}
+  .goal:hover{background:rgba(255,255,255,.025)}
+  .goal.todo .g-text{color:#5F6672}
+  .editing .goal{cursor:default;user-select:auto;-webkit-user-select:auto}
+  .editing .goal:hover{background:none}
+  .editing .st{cursor:pointer}
+  .st{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:50%}
+  .st:hover{opacity:.8}
+  .g-text{flex:1;min-width:0;font-size:15px;line-height:1.4;overflow-wrap:anywhere;padding:2px 6px;margin:-2px -6px;border-radius:6px;outline:none}
+  .pct{flex:none;min-width:34px;text-align:right;font-size:14px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .pct small{font-size:11.5px;color:var(--faint);margin-left:2px}
+  .g-del,.cat-del{display:none;width:26px;height:26px;flex:none;border-radius:7px;
+    place-items:center;font-size:18px;line-height:1;color:var(--faint)}
+  .g-del:hover,.cat-del:hover{color:var(--red);background:rgba(217,130,115,.1)}
+  .cat-del.armed{width:auto;padding:0 10px;font-size:12.5px;font-weight:600;color:var(--red);
+    background:rgba(217,130,115,.14);white-space:nowrap}
+
+  .add-goal{display:none;align-items:center;gap:8px;width:100%;padding:15px 18px;text-align:left;
+    border-top:1px solid var(--border);color:var(--dim);font-size:13px}
+  .add-goal i{font-style:normal;color:var(--green);font-size:17px;line-height:1;width:14px;text-align:center}
+  .add-goal:hover{background:var(--head)}
+  .add-cat{display:none;place-items:center;min-height:140px;border:1px dashed var(--track);border-radius:14px;
+    color:var(--dim);font-size:14px}
+  .add-cat:hover{background:var(--card);color:var(--text)}
+
+  /* edit mode */
+  .editing .g-text,.editing .cat-name,.editing h1{cursor:text;transition:background .12s}
+  .editing .g-text:hover,.editing .cat-name:hover,.editing h1:hover{background:rgba(234,179,8,.06)}
+  .editing .g-text:focus,.editing .cat-name:focus,.editing h1:focus{background:rgba(234,179,8,.12)}
+  .editing .g-del,.editing .cat-del{display:grid}
+  .editing .add-cat{display:grid}
+  .editing .add-goal{display:flex}
+
+  /* micro-interactions */
+  .st{position:relative}
+  .st svg{display:block}
+  .arc{transition:stroke-dashoffset .5s cubic-bezier(.22,.8,.3,1),stroke-opacity .25s}
+  .trk{transition:stroke-opacity .3s}
+  .tick{stroke-dasharray:1;stroke-dashoffset:0}
+  .goal{transition:background .12s,transform .12s cubic-bezier(.3,.7,.3,1)}
+  .goal:active{transform:scale(.985)}
+  .editing .goal:active{transform:none}
+  .bounce{animation:bounce .34s cubic-bezier(.3,.7,.3,1)}
+  .ico.pop{animation:popin .5s cubic-bezier(.2,.9,.3,1.35)}
+  .ico.pop .tick{animation:draw .34s .12s ease-out both}
+  .ripple{position:absolute;inset:0;border-radius:50%;border:2px solid var(--green);pointer-events:none;
+    animation:ripple .65s ease-out forwards}
+  .pct .n{display:inline-block;min-width:1ch;font-variant-numeric:tabular-nums}
+  .pct.bump .n{animation:bump .42s cubic-bezier(.3,.7,.3,1)}
+  .goal.flash{animation:rowflash .8s ease-out}
+  .goal.flash.full{animation-name:rowflashfull;animation-duration:1s}
+  .stat b{display:inline-block;transform-origin:right center}
+  .stat b.tk{animation:statTick .38s cubic-bezier(.3,.7,.3,1)}
+  .cat-pct b.tk{display:inline-block;animation:catTick .38s cubic-bezier(.3,.7,.3,1)}
+  @keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+  @keyframes popin{0%{transform:scale(.45);opacity:.3}55%{transform:scale(1.3);opacity:1}100%{transform:scale(1)}}
+  @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+  @keyframes ripple{from{transform:scale(1);opacity:.75}to{transform:scale(2.8);opacity:0}}
+  @keyframes bump{0%{color:var(--dim)}35%{color:var(--green)}100%{color:var(--dim)}}
+  @keyframes rowflash{0%{background:rgba(34,197,94,.15)}100%{background:rgba(34,197,94,0)}}
+  @keyframes rowflashfull{0%{background:rgba(34,197,94,.26)}100%{background:rgba(34,197,94,0)}}
+  @keyframes statTick{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+  @keyframes catTick{0%{transform:scale(1);color:var(--dim)}40%{transform:scale(1.12);color:var(--green)}100%{transform:scale(1);color:var(--dim)}}
+  @media (prefers-reduced-motion:reduce){
+    .arc,.trk,.ring-fill,.goal{transition:none}
+    .bounce,.ico.pop,.ico.pop .tick,.ripple,.pct.bump .n,.goal.flash,.stat b.tk,.cat-pct b.tk{animation:none!important}
+  }
+
+  @media(max-width:880px){
+    .layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "side" "board"}
+    .side{position:static}
+    .page{padding:24px 16px 56px}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="layout">
+    <header class="head">
+      <button class="btn-ghost" id="editBtn">수정</button>
+    </header>
+
+    <aside class="side">
+      <div class="sum-card">
+        <div class="ring-wrap">
+          <svg width="190" height="190" viewBox="0 0 190 190">
+            <circle class="ring-track" cx="95" cy="95" r="82" fill="none" stroke-width="14"/>
+            <circle id="ringFill" class="ring-fill" cx="95" cy="95" r="82" fill="none" stroke-width="14"
+              stroke-dasharray="515.22" stroke-dashoffset="515.22"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-label">전체 달성률</div>
+            <div class="ring-value"><span id="ovNum">00</span><span class="u">%</span></div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>진행 완료</span><b class="g" id="stDone">0</b></div>
+          <div class="stat"><span>진행 중</span><b class="y" id="stDoing">0</b></div>
+          <div class="stat"><span>진행 전</span><b class="r" id="stTodo">0</b></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="board" id="board"></main>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KEY = 'goal-list-v1';
+  const CIRC = 515.22;
+  const uid = () => Math.random().toString(36).slice(2, 9);
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const toHtml = s => esc(s).replace(/\n/g,'<br>');
+  const pad = n => String(n).padStart(2,'0');
+
+  /* ---------- data ---------- */
+  function defaultData(){
+    const names = ['카테고리','카테고리','카테고리','카테고리','카테고리','카테고리','카테고리','카테고리'];
+    return {
+      title: '2026 목표',
+      cats: names.map(n => ({
+        id: uid(), name: n,
+        goals: [0,1,2].map(() => ({ id: uid(), text: '목표 입력', pct: 0 }))
+      }))
+    };
+  }
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(raw){
+        const d = JSON.parse(raw);
+        if(d && Array.isArray(d.cats)) return d;
+      }
+    }catch(e){}
+    return defaultData();
+  }
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  }
+  let data = load();
+  let editMode = false;
+
+  const $ = id => document.getElementById(id);
+  const board = $('board'), editBtn = $('editBtn');
+
+  /* ---------- helpers ---------- */
+  function catPct(cat){
+    if(!cat.goals.length) return 0;
+    return Math.round(cat.goals.reduce((s,g)=>s+g.pct,0) / cat.goals.length);
+  }
+  const reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let shown = {};   // goalId -> percentage currently shown on screen
+
+  function checkIcon(s, pop){
+    const m = s / 2;
+    return `<svg class="ico${pop ? ' pop' : ''}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}"><circle cx="${m}" cy="${m}" r="${m}" fill="var(--green)"/>`
+      + `<path class="tick" pathLength="1" d="M${s*.29} ${s*.53}L${s*.43} ${s*.67}L${s*.72} ${s*.35}" fill="none" stroke="#0B2412" stroke-width="${s*.11}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  function statusIcon(pct, s){
+    if(pct >= 100) return checkIcon(s, false);
+    const sw = 1.7, r = (s - sw) / 2, c = 2 * Math.PI * r, m = s / 2;
+    return `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">`
+      + `<circle class="trk" cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--faint)" stroke-width="${sw}" style="stroke-opacity:${pct>0?.45:1}"/>`
+      + `<circle class="arc" cx="${m}" cy="${m}" r="${r}" fill="none" stroke="var(--green)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" style="stroke-dashoffset:${c*(1-pct/100)};stroke-opacity:${pct>0?1:0}" transform="rotate(-90 ${m} ${m})"/></svg>`;
+  }
+  function restart(el, cls){
+    el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls);
+  }
+  function countUp(el, from, to, fmt, dur){
+    fmt = fmt || (v => v); dur = dur || 400;
+    if(el._raf){ cancelAnimationFrame(el._raf); el._raf = null; }
+    if(reduce || from === to){ el.textContent = fmt(to); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - t0) / dur);
+      el.textContent = fmt(Math.round(from + (to - from) * (1 - Math.pow(1 - t, 3))));
+      if(t < 1) el._raf = requestAnimationFrame(step); else el._raf = null;
+    };
+    el._raf = requestAnimationFrame(step);
+  }
+  function addRipple(st){
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    r.addEventListener('animationend', () => r.remove());
+    st.appendChild(r);
+  }
+  function updateIcon(st, from, to, s){
+    const svg = st.querySelector('svg');
+    if(from < 100 && to < 100 && svg && svg.querySelector('.arc')){
+      const sw = 1.7, r = (s - sw) / 2, c = 2 * Math.PI * r;
+      const arc = svg.querySelector('.arc'), trk = svg.querySelector('.trk');
+      arc.style.strokeDashoffset = c * (1 - to / 100);
+      arc.style.strokeOpacity = to > 0 ? 1 : 0;
+      trk.style.strokeOpacity = to > 0 ? .45 : 1;
+      if(!reduce) restart(svg, 'bounce');
+      return;
+    }
+    st.innerHTML = to >= 100 ? checkIcon(s, !reduce) : statusIcon(to, s);
+    if(reduce) return;
+    if(to >= 100) addRipple(st);
+    else restart(st.querySelector('svg'), 'bounce');
+  }
+  function animateGoal(li, to){
+    const st = li.querySelector('.st'), pctEl = li.querySelector('.pct'), n = pctEl.querySelector('.n');
+    const prev = parseInt(n.textContent, 10) || 0;
+    const fromIcon = shown[li.dataset.gid] !== undefined ? shown[li.dataset.gid] : prev;
+    updateIcon(st, fromIcon, to, 18);
+    countUp(n, prev, to, null, 380);
+    if(!reduce){
+      restart(pctEl, 'bump');
+      li.classList.remove('flash', 'full'); void li.getBoundingClientRect();
+      li.classList.add('flash'); if(to >= 100) li.classList.add('full');
+      clearTimeout(li._ft);
+      li._ft = setTimeout(() => li.classList.remove('flash', 'full'), 1050);
+    }
+  }
+  function setStat(id, v){
+    const el = $(id);
+    if(el.textContent !== String(v)){
+      el.textContent = v;
+      if(!reduce) restart(el, 'tk');
+    }
+  }
+  function selectAll(el){
+    const r = document.createRange(); r.selectNodeContents(el);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+  function ctx(el){
+    const sec = el.closest('.cat'); if(!sec) return {};
+    const cat = data.cats.find(c => c.id === sec.dataset.cid);
+    const li = el.closest('.goal');
+    const g = li && cat ? cat.goals.find(x => x.id === li.dataset.gid) : null;
+    return { sec, cat, li, g };
+  }
+
+  /* ---------- render ---------- */
+  function goalHtml(g, ce){
+    return `<li class="goal${g.pct <= 0 ? ' todo' : ''}" data-gid="${g.id}">
+      <button class="st" aria-label="진행률 올리기">${statusIcon(g.pct, 18)}</button>
+      <div class="g-text"${ce}>${toHtml(g.text)}</div>
+      <span class="pct"><span class="n">${g.pct}</span><small>%</small></span>
+      <button class="g-del" aria-label="목표 삭제">×</button>
+    </li>`;
+  }
+  function renderBoard(){
+    const ce = editMode ? ' contenteditable="true" spellcheck="false"' : '';
+    shown = {};
+    data.cats.forEach(c => c.goals.forEach(g => { shown[g.id] = g.pct; }));
+    board.innerHTML = data.cats.map(cat => `
+      <section class="cat" data-cid="${cat.id}">
+        <div class="cat-head">
+          <div class="cat-title"><span class="cat-name"${ce}>${toHtml(cat.name)}</span><span class="count">${cat.goals.length}</span></div>
+          <div class="cat-right">
+            <div class="cat-pct"><b>${catPct(cat)}</b><small>%</small></div>
+            <button class="cat-del" aria-label="영역 삭제">×</button>
+          </div>
+        </div>
+        <ul class="goals">${cat.goals.map(g => goalHtml(g, ce)).join('')}</ul>
+        <button class="add-goal"><i>+</i>목표 추가</button>
+      </section>`).join('') + '<button class="add-cat">+ 영역 추가</button>';
+  }
+  // updates numbers/icons in place (keeps DOM nodes so focus & clicks are never lost)
+  function syncUI(){
+    const all = data.cats.flatMap(c => c.goals);
+    const total = all.length;
+    const overall = total ? Math.round(all.reduce((s,g)=>s+g.pct,0) / total) : 0;
+    const ov = $('ovNum');
+    countUp(ov, parseInt(ov.textContent, 10) || 0, overall, pad, 450);
+    $('ringFill').style.strokeDashoffset = CIRC * (1 - overall / 100);
+    setStat('stDone', all.filter(g => g.pct >= 100).length);
+    setStat('stDoing', all.filter(g => g.pct > 0 && g.pct < 100).length);
+    setStat('stTodo', all.filter(g => g.pct <= 0).length);
+    board.querySelectorAll('.cat').forEach(sec => {
+      const cat = data.cats.find(c => c.id === sec.dataset.cid); if(!cat) return;
+      const cb = sec.querySelector('.cat-pct b'), cp = catPct(cat);
+      const cur = parseInt(cb.textContent, 10) || 0;
+      if(cur !== cp){ countUp(cb, cur, cp, null, 400); if(!reduce) restart(cb, 'tk'); }
+      sec.querySelector('.count').textContent = cat.goals.length;
+      sec.querySelectorAll('.goal').forEach(li => {
+        const g = cat.goals.find(x => x.id === li.dataset.gid); if(!g) return;
+        li.classList.toggle('todo', g.pct <= 0);
+        if(shown[g.id] !== g.pct){
+          animateGoal(li, g.pct);
+          shown[g.id] = g.pct;
+        }
+      });
+    });
+  }
+  function refresh(){ renderBoard(); syncUI(); }
+  function setEditMode(on){
+    editMode = on;
+    document.body.classList.toggle('editing', on);
+    editBtn.textContent = on ? '완료' : '수정';
+    editBtn.classList.toggle('active', on);
+  }
+
+  /* ---------- events ---------- */
+  editBtn.addEventListener('click', () => { setEditMode(!editMode); refresh(); });
+
+  board.addEventListener('click', e => {
+    const t = e.target;
+    if(t.closest('.g-del')){
+      const { cat, g } = ctx(t); if(!g) return;
+      cat.goals = cat.goals.filter(x => x !== g);
+      save(); refresh(); return;
+    }
+    const delBtn = t.closest('.cat-del');
+    if(delBtn){
+      const { cat } = ctx(t); if(!cat) return;
+      if(!delBtn.classList.contains('armed')){
+        // first click: ask for confirmation right on the button (no popup needed)
+        document.querySelectorAll('.cat-del.armed').forEach(b => { b.classList.remove('armed'); b.textContent = '×'; });
+        delBtn.classList.add('armed'); delBtn.textContent = '삭제할까요?';
+        clearTimeout(delBtn._t);
+        delBtn._t = setTimeout(() => { delBtn.classList.remove('armed'); delBtn.textContent = '×'; }, 3000);
+        return;
+      }
+      clearTimeout(delBtn._t);
+      data.cats = data.cats.filter(c => c !== cat);
+      save(); refresh(); return;
+    }
+    if(t.closest('.add-goal')){
+      const { cat } = ctx(t); if(!cat) return;
+      const g = { id: uid(), text: '새 목표', pct: 0 };
+      cat.goals.push(g); save();
+      setEditMode(true); refresh();
+      const el = board.querySelector(`[data-gid="${g.id}"] .g-text`);
+      if(el){ el.focus(); selectAll(el); }
+      return;
+    }
+    const row = t.closest('.goal');
+    if(row && (!editMode || t.closest('.st'))){
+      const { g } = ctx(row); if(!g) return;
+      g.pct = g.pct >= 100 ? 0 : Math.min(100, (Math.floor(g.pct / 10) + 1) * 10);
+      if(navigator.vibrate && !reduce) navigator.vibrate(g.pct >= 100 ? [12, 50, 16] : 8);
+      save(); syncUI(); return;
+    }
+    if(t.closest('.add-cat')){
+      const cat = { id: uid(), name: '카테고리', goals: [{ id: uid(), text: '목표 입력', pct: 0 }] };
+      data.cats.push(cat); save(); refresh();
+      const el = board.querySelector(`[data-cid="${cat.id}"] .cat-name`);
+      if(el){ el.focus(); selectAll(el); }
+      return;
+    }
+  });
+
+  board.addEventListener('focusout', e => {
+    const t = e.target;
+    if(!t.matches) return;
+    if(t.matches('.g-text')){
+      const { g } = ctx(t); if(!g) return;
+      const v = t.innerText.trim() || '목표 입력';
+      g.text = v; t.innerHTML = toHtml(v); save();
+    } else if(t.matches('.cat-name')){
+      const { cat } = ctx(t); if(!cat) return;
+      const v = t.innerText.replace(/\n/g,' ').trim() || '카테고리';
+      cat.name = v; t.textContent = v; save();
+    }
+  });
+  board.addEventListener('keydown', e => {
+    const t = e.target;
+    if(e.key === 'Enter' && t.matches){
+      if(t.matches('.cat-name')){ e.preventDefault(); t.blur(); }
+    }
+  });
+  // paste as plain text into editable fields
+  document.addEventListener('paste', e => {
+    const t = e.target;
+    if(t && t.isContentEditable){
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    }
+  });
+
+
+  /* ---------- init ---------- */
+  refresh();
+})();
+</script>
+</body>
+</html>
